@@ -1,1 +1,121 @@
+Elk playbook
+---
+- name: elk-playbook
+  hosts: elk
+  remote_user: azureuser
+  become: true
+  tasks:
+
+    - name: Install docker.io
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+        name: docker.io
+        state: present
+
+
+    - name: Install python3-pip
+      apt:
+        force_apt_get: yes
+        name: python3-pip
+        state: present
+
+
+    - name: Install Docker module
+      pip:
+        name: docker
+        state: present
+
+
+    - name: Increase virtual memory
+      command: sysctl -w vm.max_map_count=262144
+
+
+    - name: Use more memory
+      sysctl:
+        name: vm.max_map_count
+        value: 262144
+        state: present
+        reload: yes
+
+
+    - name: download and launch a docker elk container 
+    
+
+metrobeat
+
+---
+- name: Install metricbeat and transfer configuration file to VMs
+  hosts: webservers
+  become: true
+  tasks:
+
+   - name: Download deb file for metricbeats
+     command:
+      cmd: curl -L -O https://artifacts.elastic.co/downloads/beats/metricbeat/metricbeat-7.6.1-amd64.deb
+
+   - name: Install metricbeat from downloaded file
+     command:
+      cmd: dpkg -i metricbeat-7.6.1-amd64.deb
+
+   - name: Copy metricbeat config file to VM
+     copy:
+      src: /etc/ansible/metricbeat-config.yml
+      dest: /etc/metricbeat/metricbeat.yml
+
+   - name: Enable metricbeat system
+     command:
+      cmd: metricbeat modules enable system
+
+   - name: metricbeat setup
+     command:
+      cmd: metricbeat setup
+
+   - name: Start metricbeat service
+     command:
+      cmd: service metricbeat start
+
+   - name: Enable metricbeat on boot
+     systemd:
+      name: metricbeat
+      enabled: yes
+
+
+
+filebeat
+
+
+---
+- name: installing and launching filebeat
+  hosts: webservers
+  become: yes
+  tasks:
+
+  - name: download filebeat deb
+    command: curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.6.1-amd64.deb
+
+  - name: install filebeat deb
+    command: dpkg -i filebeat-7.6.1-amd64.deb
+
+  - name: drop in filebeat.yml
+    copy:
+      src: /etc/ansible/filebeat-config.yml
+      dest: /etc/filebeat/filebeat.yml
+
+  - name: enable and configure system module
+    command: filebeat modules enable system
+
+  - name: setup filebeat
+    command: filebeat setup
+
+  - name: start filebeat service
+    command: service filebeat start
+
+  - name: enable service filebeat on boot
+    systemd:
+      name: filebeat
+      enabled: yes
+
+
+
 
